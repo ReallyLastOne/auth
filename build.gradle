@@ -1,0 +1,69 @@
+plugins {
+    alias(libs.plugins.java)
+    alias(libs.plugins.spring.boot)
+    alias(libs.plugins.spring.dependency.management)
+    alias(libs.plugins.graalvm.buildtools.native)
+    id 'maven-publish'
+}
+
+group = 'org.reallylastone'
+version = file('version.txt').text.trim()
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+}
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
+dependencies {
+    implementation libs.common
+    implementation libs.spring.boot.starter.actuator
+    implementation libs.spring.boot.starter.data.jpa
+    implementation libs.postgresql
+    implementation libs.mapstruct
+    compileOnly libs.lombok
+    implementation libs.keycloak.admin.client
+    implementation libs.springdoc.openapi.starter.webmvc.ui
+    developmentOnly libs.spring.boot.devtools
+    annotationProcessor libs.lombok
+    annotationProcessor libs.lombok.mapstruct.binding
+    annotationProcessor libs.mapstruct.processor
+    testImplementation libs.spring.boot.test
+    testImplementation libs.junit.jupiter
+    testImplementation libs.mockito.junit.jupiter
+    testCompileOnly libs.lombok
+    testRuntimeOnly libs.junit.platform.launcher
+    testAnnotationProcessor libs.lombok
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+springBoot {
+    buildInfo()
+}
+
+tasks.withType(GenerateModuleMetadata).configureEach {
+    enabled = false
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs.add("-parameters")
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            from components.java
+        }
+    }
+    repositories {
+        mavenLocal()
+    }
+}

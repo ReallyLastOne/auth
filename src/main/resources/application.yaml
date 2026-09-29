@@ -1,0 +1,43 @@
+server:
+  port: 9081
+spring:
+  application:
+    name: auth
+  datasource:
+    url: 'jdbc:postgresql://${AUTH_DB_HOST:localhost}:${AUTH_DB_PORT:5432}/platform?currentSchema=auth&stringtype=unspecified'
+    username: ${AUTH_DB_USER:auth}
+    password: ${AUTH_DB_PASS:auth}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        default_schema: auth
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: '${AUTH_KEYCLOAK_HOST:http://localhost:8180}/realms/platform'
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+
+common.authorization.use-auth-view: true
+common.leadership.enabled: true
+
+keycloak:
+  server-url: '${AUTH_KEYCLOAK_HOST:http://localhost:8180}'
+  realm: platform
+  admin-username: ${AUTH_KEYCLOAK_ADMIN_USER:admin}
+  admin-password: ${AUTH_KEYCLOAK_ADMIN_PASSWORD:admin}
+  sync:
+    initial-delay-ms: 5_000
+    fixed-delay-ms: 10_000
+
+app.module: auth

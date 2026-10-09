@@ -19,6 +19,12 @@ spring:
       resourceserver:
         jwt:
           issuer-uri: '${AUTH_KEYCLOAK_HOST:http://localhost:8180}/realms/platform'
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: 5672
+    username: ${AUTH_RABBITMQ_USER:auth}
+    password: ${AUTH_RABBITMQ_PASSWORD:auth}
+    virtual-host: /platform
 management:
   endpoints:
     web:
@@ -30,6 +36,11 @@ management:
 
 common.authorization.use-auth-view: true
 common.leadership.enabled: true
+common.event-message.enabled: true
+
+auth:
+  provisioning:
+    default-roles:
 
 keycloak:
   server-url: '${AUTH_KEYCLOAK_HOST:http://localhost:8180}'

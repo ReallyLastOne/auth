@@ -4,3 +4,8 @@ spring:
     properties:
       hibernate:
         format_sql: true
+
+auth:
+  provisioning:
+    default-roles:
+      - super_admin

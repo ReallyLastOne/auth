@@ -16,6 +16,9 @@ import org.reallylastone.auth.keycloak.domain.dto.KeycloakUser;
 import org.reallylastone.auth.keycloak.service.KeycloakUserMapper;
 import org.reallylastone.auth.user.domain.entity.User;
 import org.reallylastone.auth.user.repository.UserRepository;
+import org.reallylastone.auth.user.service.UserProvisioningService;
+import org.reallylastone.common.event.domain.dto.DataModificationEvent;
+import org.reallylastone.common.event.service.EventMessageService;
 import org.reallylastone.leader_election_lib.LeadershipService;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -33,6 +36,8 @@ public class KeycloakUserSyncJob {
     private final KeycloakUserMapper keycloakUserMapper;
     private final UserRepository userRepository;
     private final LeadershipService leadershipService;
+    private final UserProvisioningService userProvisioningService;
+    private final EventMessageService eventMessageService;
 
     @Scheduled(initialDelayString = "${keycloak.sync.initial-delay-ms:5000}",
             fixedDelayString = "${keycloak.sync.fixed-delay-ms:300000}")
@@ -51,8 +56,10 @@ public class KeycloakUserSyncJob {
         for (KeycloakUser keycloakUser : keycloakUsers) {
             User user = existingUsers.get(keycloakUser.id());
             if (user == null) {
-                synced++;
-                usersToSave.add(keycloakUserMapper.toEntity(new User(), keycloakUser));
+                if (userProvisioningService.provision(keycloakUser.id(), keycloakUser.username(),
+                        keycloakUser.email())) {
+                    synced++;
+                }
                 continue;
             }
 
@@ -63,7 +70,14 @@ public class KeycloakUserSyncJob {
             synced++;
             keycloakUserMapper.toEntity(user, keycloakUser);
             usersToSave.add(user);
+            if (user.isDeleted()) {
+                usersToSave.add(keycloakUserMapper.toEntity(new User(), keycloakUser));
+                recordOutbox(keycloakUser, DataModificationEvent.DataModificationAction.DELETED);
+            } else {
+                recordOutbox(keycloakUser, DataModificationEvent.DataModificationAction.UPDATED);
+            }
         }
+
         userRepository.saveAllAndFlush(usersToSave);
 
         int removed = keycloakUserIds.isEmpty() ? 0
@@ -71,6 +85,12 @@ public class KeycloakUserSyncJob {
         if (removed != 0 || synced != 0) {
             log.info("Synced {} users from Keycloak ({} removed)", synced, removed);
         }
+    }
+
+    private void recordOutbox(KeycloakUser keycloakUser,
+            DataModificationEvent.DataModificationAction action) {
+        eventMessageService.recordOutbox("auth", "users", keycloakUser.id(), action, null,
+                Instant.now());
     }
 
     private static boolean hasUserChanged(KeycloakUser keycloakUser, User user) {

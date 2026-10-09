@@ -20,4 +20,12 @@ public interface UserRepository extends AuditableRepository<User, String> {
             """)
     int markDeletedExcluding(Collection<String> activeUserIds, String modifiedBy,
             Instant modifiedAt);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = """
+            INSERT INTO auth.users (user_id, username, email, created_by)
+            VALUES (CAST(:userId AS uuid), :username, :email, 'SYSTEM')
+            ON CONFLICT (user_id) DO NOTHING
+            """, nativeQuery = true)
+    int insertIfAbsent(String userId, String username, String email);
 }

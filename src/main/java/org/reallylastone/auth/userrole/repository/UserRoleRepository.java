@@ -1,6 +1,7 @@
 package org.reallylastone.auth.userrole.repository;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 
 import org.reallylastone.auth.userrole.domain.dto.UserRoleReadDto;
@@ -36,4 +37,14 @@ public interface UserRoleRepository extends AuditableRepository<UserRole, Long> 
     void deleteByUserId(String userId, String modifiedBy, Instant modifiedAt);
 
     boolean existsByRoleIdAndDeletedFalse(Long roleId);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = """
+            INSERT INTO auth.user_roles (user_id, role_id, created_by)
+            SELECT CAST(:userId AS uuid), r.role_id, 'SYSTEM'
+            FROM auth.roles r
+            WHERE r.name IN (:roles)
+            ON CONFLICT (user_id, role_id) WHERE deleted = false DO NOTHING
+            """, nativeQuery = true)
+    int assignRoles(String userId, Collection<String> roles);
 }
